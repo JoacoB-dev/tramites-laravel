@@ -1,0 +1,94 @@
+# Levanta la app completa: web (Apache + PHP 8.3), worker de la cola, MySQL 8.4 y Mailpit.
+#   docker compose up -d --build
+#   App:     http://localhost:8081
+#   Mailpit: http://localhost:8026  (ahí llegan los mails de cambio de estado)
+name: tramites
+
+x-entorno: &entorno
+  APP_NAME: "Matrículas y trámites"
+  APP_ENV: production
+  APP_DEBUG: "false"
+  APP_URL: http://localhost:8081
+  APP_LOCALE: es
+  APP_DEMO: "true"
+  LOG_CHANNEL: stderr
+  DB_CONNECTION: mysql
+  DB_HOST: db
+  DB_PORT: "3306"
+  DB_DATABASE: tramites
+  DB_USERNAME: tramites
+  DB_PASSWORD: tramites   # solo para la demo local
+  SESSION_DRIVER: database
+  CACHE_STORE: database
+  QUEUE_CONNECTION: database
+  MAIL_MAILER: smtp
+  MAIL_HOST: mailpit
+  MAIL_PORT: "1025"
+  MAIL_FROM_ADDRESS: tramites@consejo-ficticio.local
+  MAIL_FROM_NAME: "CPIA-VF Trámites"
+
+services:
+  app:
+    build: .
+    container_name: tramites-app
+    environment:
+      <<: *entorno
+      RUN_MIGRATIONS: "true"
+      SEED_DEMO: "true"
+    ports:
+      - "8081:80"
+    volumes:
+      - storage:/var/www/html/storage/app
+    depends_on:
+      db:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost/up"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+  queue:
+    build: .
+    container_name: tramites-queue
+    command: ["php", "artisan", "queue:work", "--tries=3", "--sleep=3"]
+    user: www-data
+    environment: *entorno
+    volumes:
+      - storage:/var/www/html/storage/app
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: mysql:8.4
+    container_name: tramites-db
+    environment:
+      MYSQL_DATABASE: tramites
+      MYSQL_USER: tramites
+      MYSQL_PASSWORD: tramites
+      MYSQL_ROOT_PASSWORD: root-solo-demo
+    volumes:
+      - dbdata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot-solo-demo"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: tramites-mailpit
+    ports:
+      - "8026:8025"
+    restart: unless-stopped
+
+volumes:
+  dbdata:
+  storage:

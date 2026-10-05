@@ -1,0 +1,44 @@
+@import "bootstrap/dist/css/bootstrap.min.css";
+@import "bootstrap-icons/font/bootstrap-icons.css";
+
+:root {
+    --consejo: #1f3a5f;
+}
+
+.bg-consejo {
+    background-color: var(--consejo);
+}
+
+/* Historial de estados tipo línea de tiempo */
+.historial-item {
+    position: relative;
+    padding-left: 1.25rem;
+    padding-bottom: 1rem;
+    border-left: 2px solid var(--bs-border-color);
+    margin-left: .35rem;
+}
+
+.historial-item:last-child {
+    padding-bottom: 0;
+}
+
+.historial-item::before {
+    content: "";
+    position: absolute;
+    left: -.45rem;
+    top: .2rem;
+    width: .8rem;
+    height: .8rem;
+    border-radius: 50%;
+    background: var(--consejo);
+}
+
+/* Fila recién actualizada por AJAX */
+.fila-actualizada {
+    animation: resaltar 2s ease-out;
+}
+
+@keyframes resaltar {
+    from { background-color: #d1e7dd; }
+    to { background-color: transparent; }
+}
